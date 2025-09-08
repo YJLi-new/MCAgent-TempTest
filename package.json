@@ -4,6 +4,10 @@
   "private": true,
   "type": "commonjs",
   "description": "Python-driven mineflayer bot bridge for movement and chat",
+  "scripts": {
+    "start": "node bot.js",
+    "mock": "node bot.js --mock"
+  },
   "license": "UNLICENSED",
   "dependencies": {
     "mineflayer": "^4.0.0",
