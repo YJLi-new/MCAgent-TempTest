@@ -13,10 +13,10 @@ Python 进程与 Node 机器人之间通过标准输入/输出传递 JSON 指令
 ## 目录结构
 ```
 .
-├─ main.py         # Python 启动器与示例 CLI
-├─ bot.js          # Node 侧 mineflayer 机器人桥接（move/say/quit）
-├─ package.json    # Node 依赖
-├─ requirements.txt# Python 依赖（本项目无需三方库）
+├─ main.py          # Python 启动器与示例 CLI
+├─ bot.js           # Node 侧 mineflayer 机器人桥接（move/say/quit）
+├─ package.json     # Node 依赖与 npm scripts
+├─ requirements.txt # Python 依赖（本项目无需三方库）
 └─ README.md
 ```
 
@@ -59,6 +59,28 @@ python main.py --username Bot --direction east --blocks 12 --message "到位啦"
 python main.py --username Bot --yaw-deg 135 --blocks 10 --message "斜向走10格"
 ```
 
+## 快速测试（Mock 模式）
+无需真实服务器即可验证指令流与动作：
+
+- Python 一键测试
+```bash
+python main.py --mock --direction east --blocks 5 --message "TEST_CHAT"
+```
+输出会包含：`[bridge] ready`、`say_result`、`move_result` 等事件。
+
+- 仅 Node 侧（手动发 JSON 指令）
+```bash
+npm run mock
+# 然后逐条输入以下行并回车
+{"type":"move","direction":"north","blocks":10}
+{"type":"say","message":"Hello"}
+{"type":"quit"}
+```
+
+## npm scripts
+- `npm start`：启动真实 mineflayer 机器人（需连接到服务器）
+- `npm run mock`：启动本地模拟机器人（开发测试用）
+
 ## 命令行参数（main.py）
 - `--host`：服务器地址，默认 `127.0.0.1`
 - `--port`：服务器端口，默认 `25565`
@@ -70,6 +92,7 @@ python main.py --username Bot --yaw-deg 135 --blocks 10 --message "斜向走10�
 - `--yaw-deg`：移动的绝对朝向角度，单位度（0=东，90=南，180=西，270=北）
 - `--blocks`：移动的格数，默认 `10`
 - `--message`：要在聊天框发送的文本
+- `--mock`：启用本地模拟模式（无需服务器，便于测试）
 
 ## 工作原理
 - Python 启动 `node bot.js` 并监听其标准输出。
@@ -86,6 +109,7 @@ python main.py --username Bot --yaw-deg 135 --blocks 10 --message "斜向走10�
 ## 注意事项 / 常见问题
 - Node 版本：若安装依赖时出现 `EBADENGINE` 提示，请升级到 Node 22+ 再运行 `npm install`。
 - 路径规划：`mineflayer-pathfinder` 可能因障碍/落差导致到达失败，控制台会输出 `move_result` 的失败原因。
+- Windows 控制台中文：如出现乱码，可先执行 `chcp 65001` 切换到 UTF-8。
 - 服务器限制：部分服务器可能屏蔽机器人、限制移动或聊天。
 
 ## 许可证
@@ -94,4 +118,3 @@ python main.py --username Bot --yaw-deg 135 --blocks 10 --message "斜向走10�
 ## 参考
 - mineflayer: https://github.com/PrismarineJS/mineflayer
 - mineflayer-pathfinder: https://github.com/PrismarineJS/mineflayer-pathfinder
-
