@@ -37,6 +37,9 @@ def main():
     parser.add_argument("--message", default="你好，我是一个机器人！",
                         help="Chat message to send")
 
+    parser.add_argument("--mock", action="store_true",
+                        help="使用 bot 的本地模拟模式（无需真实服务器，便于快速测试）")
+
     args = parser.parse_args()
 
     node_cmd = [
@@ -51,6 +54,8 @@ def main():
         node_cmd += ["--auth", str(args.auth)]
     if args.version:
         node_cmd += ["--version", str(args.version)]
+    if args.mock:
+        node_cmd += ["--mock"]
 
     # Start Node bot bridge
     try:

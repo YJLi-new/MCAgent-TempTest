@@ -1,10 +1,8 @@
 // Node.js bridge that exposes minimal commands to control a mineflayer bot.
 // Reads JSON lines from stdin and writes JSON lines to stdout.
 
-const mineflayer = require('mineflayer');
-const { pathfinder, Movements, goals } = require('mineflayer-pathfinder');
-const { GoalBlock } = goals;
 const readline = require('readline');
+const { EventEmitter } = require('events');
 
 function log(obj) {
   try {
@@ -28,33 +26,81 @@ function parseArgs(argv) {
 
 async function main() {
   const args = parseArgs(process.argv.slice(2));
-  const host = args.host || '127.0.0.1';
-  const port = args.port ? Number(args.port) : 25565;
-  const username = args.username || 'Bot';
-  const password = args.password || undefined;
-  const auth = args.auth || undefined; // e.g., 'microsoft'
-  const version = args.version || undefined; // let mineflayer autodetect if not provided
+  const useMock = Boolean(args.mock);
 
-  const bot = mineflayer.createBot({ host, port, username, password, auth, version });
-  bot.loadPlugin(pathfinder);
+  let bot;
+  let MovementsCtor = null;
+  let GoalBlockCtor = null;
+  if (useMock) {
+    // Lightweight mock bot for local testing without a server
+    const emitter = new EventEmitter();
+    let position = { x: 0, y: 64, z: 0 };
+    let yaw = 0; // radians, 0=east
+    bot = {
+      once: (...a) => emitter.once(...a),
+      on: (...a) => emitter.on(...a),
+      emit: (...a) => emitter.emit(...a),
+      loadPlugin: () => {},
+      entity: {
+        get position() { return position; },
+        set position(v) { position = v; },
+        get yaw() { return yaw; },
+        set yaw(v) { yaw = v; }
+      },
+      chat: (msg) => {
+        log({ event: 'chat', message: String(msg) });
+      },
+      pathfinder: {
+        setMovements: () => {},
+        goto: (goal) => new Promise((resolve) => {
+          // Simulate walking to the goal with a tiny delay
+          setTimeout(() => {
+            position = { x: goal.x, y: goal.y, z: goal.z };
+            resolve();
+          }, 50);
+        })
+      },
+      end: () => {}
+    };
+    // Defer ready event to simulate spawn
+    setTimeout(() => bot.emit('spawn'), 30);
+  } else {
+    // Real mineflayer bot
+    const mineflayer = require('mineflayer');
+    const { pathfinder, Movements, goals } = require('mineflayer-pathfinder');
+    MovementsCtor = Movements;
+    GoalBlockCtor = goals.GoalBlock;
 
-  let movements;
+    const host = args.host || '127.0.0.1';
+    const port = args.port ? Number(args.port) : 25565;
+    const username = args.username || 'Bot';
+    const password = args.password || undefined;
+    const auth = args.auth || undefined; // e.g., 'microsoft'
+    const version = args.version || undefined; // let mineflayer autodetect if not provided
+
+    bot = mineflayer.createBot({ host, port, username, password, auth, version });
+    bot.loadPlugin(pathfinder);
+
+    bot.on('kicked', (reason) => {
+      log({ event: 'kicked', reason });
+    });
+    bot.on('error', (err) => {
+      log({ event: 'error', message: String(err && err.message || err) });
+    });
+  }
+
+  // Common spawn handler for both real and mock modes
   bot.once('spawn', () => {
     try {
-      const mcData = require('minecraft-data')(bot.version);
-      movements = new Movements(bot, mcData);
-      bot.pathfinder.setMovements(movements);
-    } catch (e) {
-      // If minecraft-data fails, movements remain undefined. Pathing might not work.
+      if (!useMock && MovementsCtor) {
+        const mcData = require('minecraft-data')(bot.version);
+        const movements = new MovementsCtor(bot, mcData);
+        bot.pathfinder.setMovements(movements);
+      }
+    } catch (_) {
+      // ignore
     }
     log({ event: 'ready' });
-  });
-
-  bot.on('kicked', (reason) => {
-    log({ event: 'kicked', reason });
-  });
-  bot.on('error', (err) => {
-    log({ event: 'error', message: String(err && err.message || err) });
   });
 
   const rl = readline.createInterface({ input: process.stdin, crlfDelay: Infinity });
@@ -78,7 +124,8 @@ async function main() {
 
         case 'move': {
           const blocks = typeof cmd.blocks === 'number' && cmd.blocks > 0 ? cmd.blocks : 10;
-          const { x: cx, y: cy, z: cz } = bot.entity.position;
+          const pos = bot.entity.position;
+          const cx = pos.x, cy = pos.y, cz = pos.z;
           const y = Math.floor(cy);
 
           // Vector from direction or yaw
@@ -114,7 +161,9 @@ async function main() {
             return log({ event: 'move_result', ok: false, error: 'pathfinder_unavailable' });
           }
           try {
-            await bot.pathfinder.goto(new GoalBlock(tx, y, tz));
+            // Resolve GoalBlock ctor in both real and mock modes
+            const GB = GoalBlockCtor || (useMock ? (class GB { constructor(x,y,z){ this.x=x; this.y=y; this.z=z; } }) : require('mineflayer-pathfinder').goals.GoalBlock);
+            await bot.pathfinder.goto(new GB(tx, y, tz));
             return log({ event: 'move_result', ok: true, target: { x: tx, y, z: tz } });
           } catch (err) {
             return log({ event: 'move_result', ok: false, error: String(err && err.message || err) });
@@ -141,4 +190,3 @@ main().catch((e) => {
   log({ event: 'fatal', error: String(e && e.message || e) });
   process.exitCode = 1;
 });
-
