@@ -1,19 +1,17 @@
 # Minecraft Mineflayer 机器人（Python 驱动）
 
 本项目以 Python 作为入口，启动并驱动一个基于 Node.js 的 mineflayer 机器人，支持：
-- 控制角色按方向或绝对朝向角度移动指定格数（默认 10 格）
+- 按方向或绝对朝向角度移动指定格数（默认 10 格）
 - 在聊天框发送指定文本
 
 Python 与 Node 机器人通过标准输入/输出交换 JSON 指令，结构清晰、便于扩展。
-
-仓库地址：
-https://github.com/YJLi-new/MCAgent-TempTest
+仓库地址：https://github.com/YJLi-new/MCAgent-TempTest
 
 ---
 
 ## 功能概览
-- 移动：支持绝对方向（north/south/east/west）、相对方向（forward/back/left/right），或通过 `--yaw-deg` 指定绝对朝向角度移动。
-- 聊天：向服务器聊天框发送一条指定消息。
+- 移动：支持绝对方向（north/south/east/west）、相对方向（forward/back/left/right），或通过 `--yaw-deg` 指定绝对朝向角度移动
+- 聊天：向服务器聊天框发送一条指定消息
 
 ## 目录结构
 ```
@@ -27,40 +25,58 @@ https://github.com/YJLi-new/MCAgent-TempTest
 
 ## 环境要求
 - Python 3.8+
-- Node.js 22+（mineflayer 生态对 Node 版本要求较新；推荐 nvm / nvm-windows 管理版本）
+- Node.js 22+（mineflayer 生态对 Node 版本要求较新；推荐使用 nvm / nvm-windows 管理版本）
 - 可连接的 Minecraft 服务器（默认 `127.0.0.1:25565`），或使用本地 Mock 模式进行快速验证
 
 ## 安装
-1) 安装 Node 依赖：
+1) 安装 Node 依赖
 ```bash
 npm install
 ```
 
-2)（可选）安装 Python 依赖：
+2)（可选）安装 Python 依赖
 ```bash
 pip install -r requirements.txt
 ```
 
 ## 快速开始
-- 连接本地服务器，向北移动 10 格并发送一条消息：
+连接本地服务器，向北移动 10 格并发送一条消息：
 ```bash
 python main.py --host 127.0.0.1 --port 25565 --username Bot \
   --direction north --blocks 10 --message "你好，Minecraft！"
 ```
 
-- 相对朝向移动：相对于当前面向前进 10 格：
+相对朝向移动：相对于当前面向前进 10 格：
 ```bash
 python main.py --username Bot --direction forward --message "go go go"
 ```
 
-- 指定移动格数：
+指定移动格数：
 ```bash
 python main.py --username Bot --direction east --blocks 12 --message "到位"
 ```
 
-- 使用绝对朝向角度移动（0=东，90=南，180=西，270=北）：
+使用绝对朝向角度移动（0=东，90=南，180=西，270=北）：
 ```bash
 python main.py --username Bot --yaw-deg 135 --blocks 10 --message "斜向 45°"
+```
+
+## 交互模式（REPL）
+新版程序在连接成功并完成一次示例移动/发言后，会进入交互式命令行；除非收到退出命令，否则持续等待下一条指令。
+
+- 可用命令：
+  - `say <text>`：发送聊天消息
+  - `move <dir> [blocks]`：按方向移动，`north|south|east|west|forward|back|left|right`
+  - `move yaw <deg> [blocks]`：按绝对朝向角度移动（度）。示例：`move yaw 270 10`
+  - `quit` / `exit`：退出机器人并结束程序
+
+示例交互：
+```
+> say hello
+[say] OK: { ... }
+> move east 5
+[move] OK: { ... }
+> quit
 ```
 
 ## Mock 本地测试（无需服务器）
@@ -95,22 +111,21 @@ npm run mock
 ## 工作原理
 1. Python 启动 `node bot.js` 并监听其标准输出；
 2. `bot.js` 使用 `mineflayer`（或 Mock）初始化，`spawn` 后输出 `{ "event": "ready" }`；
-3. Python 收到 `ready` 后可发送 `move` 与 `say` 指令，等待 `*_result` 事件；
-4. 交互式命令行支持 `say / move / quit` 等常用操作。
+3. Python 收到 `ready` 后可发送 `move` 与 `say` 指令，并等待 `*_result` 事件；
+4. 完成一次示例行为后进入交互式命令行，支持 `say / move / quit` 等操作。
 
 ## npm scripts
 - `npm start`：启动真实 mineflayer 机器人（需服务器在线）
-- `npm run mock`：启动本地模拟机器人（开发/联调）
+- `npm run mock`：启动本地模拟机器人（开发联调）
 
 ## 常见问题
-- Node 版本错误（EBADENGINE）：升级到 Node 22+ 后重试 `npm install`。
-- 路径规划失败：`mineflayer-pathfinder` 可能因障碍/落差导致失败，查看 `move_result` 的 `error` 字段定位原因。
-- Windows 控制台中文乱码：执行 `chcp 65001` 切换到 UTF-8。
+- Node 版本错误（EBADENGINE）：升级至 Node 22+ 后重新执行 `npm install`；
+- 路径规划失败：`mineflayer-pathfinder` 可能因障碍/落差导致失败，查看 `move_result.error` 定位原因；
+- Windows 控制台中文乱码：执行 `chcp 65001` 切换为 UTF-8；
 - 服务器限制：部分服务器可能屏蔽 Bot 或限制移动/聊天。
 
 ## 版本与发布
 - 当前分支：`main`
-- 标签发布：`v0.1.0`（初始标记版本）
 - Git 远程：`origin` → https://github.com/YJLi-new/MCAgent-TempTest.git
 
 ## 许可与致谢
