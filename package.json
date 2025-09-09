@@ -11,6 +11,6 @@
   "license": "UNLICENSED",
   "dependencies": {
     "mineflayer": "^4.0.0",
-    "mineflayer-pathfinder": "^2.3.4"
+    "mineflayer-pathfinder": "^2.4.5"
   }
 }
